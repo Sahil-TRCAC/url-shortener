@@ -2,11 +2,30 @@
 from pathlib import Path
 from dotenv import load_dotenv
 
+# Load env variables
+load_dotenv()
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = os.getenv('SECRET_KEY')
-DEBUG = True
-ALLOWED_HOSTS = ['*']
+
+# ========================
+# SECURITY
+# ========================
+
+SECRET_KEY = os.getenv("SECRET_KEY", "fallback-secret-key")
+
+DEBUG = os.getenv("DEBUG", "False") == "True"
+
+ALLOWED_HOSTS = [
+    "localhost",
+    "127.0.0.1",
+    os.getenv("RENDER_EXTERNAL_HOSTNAME", ""),  # for Render
+]
+
+
+# ========================
+# INSTALLED APPS
+# ========================
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -15,10 +34,17 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+
     'rest_framework',
-    'social_django',  # Google OAuth
+    'social_django',
+
     'core',
 ]
+
+
+# ========================
+# MIDDLEWARE
+# ========================
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -28,8 +54,14 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+
     'social_django.middleware.SocialAuthExceptionMiddleware',
 ]
+
+
+# ========================
+# URLS / TEMPLATES
+# ========================
 
 ROOT_URLCONF = 'shortener.urls'
 
@@ -42,9 +74,12 @@ TEMPLATES = [
             'context_processors': [
                 'django.template.context_processors.debug',
                 'django.template.context_processors.request',
+
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+
                 'social_django.context_processors.backends',
+                'social_django.context_processors.login_redirect',
             ],
         },
     },
@@ -52,12 +87,34 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'shortener.wsgi.application'
 
+
+# ========================
+# DATABASE
+# ========================
+
+# Local (SQLite)
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
         'NAME': BASE_DIR / 'db.sqlite3',
     }
 }
+
+# 👉 For production later (PostgreSQL)
+# Uncomment when deploying
+"""
+import dj_database_url
+
+DATABASES['default'] = dj_database_url.config(
+    default=os.getenv("DATABASE_URL"),
+    conn_max_age=600
+)
+"""
+
+
+# ========================
+# PASSWORD VALIDATION
+# ========================
 
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
@@ -66,28 +123,46 @@ AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
 ]
 
+
+# ========================
+# INTERNATIONALIZATION
+# ========================
+
 LANGUAGE_CODE = 'en-us'
 TIME_ZONE = 'UTC'
 USE_I18N = True
 USE_TZ = True
 
+
+# ========================
+# STATIC FILES
+# ========================
+
 STATIC_URL = '/static/'
 STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')]
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
+
+# ========================
+# DEFAULT PRIMARY KEY
+# ========================
+
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# ============ GOOGLE OAUTH CONFIGURATION ============
+
+# ========================
+# AUTH BACKENDS
+# ========================
+
 AUTHENTICATION_BACKENDS = (
     'social_core.backends.google.GoogleOAuth2',
     'django.contrib.auth.backends.ModelBackend',
 )
 
-# REPLACE WITH YOUR ACTUAL GOOGLE OAUTH CREDENTIALS
 
-
-
-load_dotenv()
+# ========================
+# GOOGLE OAUTH
+# ========================
 
 SOCIAL_AUTH_GOOGLE_OAUTH2_KEY = os.getenv('GOOGLE_CLIENT_ID')
 SOCIAL_AUTH_GOOGLE_OAUTH2_SECRET = os.getenv('GOOGLE_CLIENT_SECRET')
@@ -99,7 +174,48 @@ SOCIAL_AUTH_GOOGLE_OAUTH2_SCOPE = [
 
 SOCIAL_AUTH_GOOGLE_OAUTH2_EXTRA_DATA = ['id', 'name', 'email', 'picture']
 
-# Login URLs
+# 🔥 IMPORTANT FIX (account switching)
+SOCIAL_AUTH_GOOGLE_OAUTH2_AUTH_EXTRA_ARGUMENTS = {
+    "prompt": "select_account"
+}
+
+
+# ========================
+# SOCIAL AUTH PIPELINE
+# ========================
+
+SOCIAL_AUTH_PIPELINE = (
+    'social_core.pipeline.social_auth.social_details',
+    'social_core.pipeline.social_auth.social_uid',
+    'social_core.pipeline.social_auth.auth_allowed',
+    'social_core.pipeline.social_auth.social_user',
+    'social_core.pipeline.user.get_username',
+
+    # 🔥 prevents duplicate accounts
+    'social_core.pipeline.social_auth.associate_by_email',
+
+    'social_core.pipeline.user.create_user',
+    'social_core.pipeline.social_auth.associate_user',
+    'social_core.pipeline.social_auth.load_extra_data',
+    'social_core.pipeline.user.user_details',
+)
+
+
+# ========================
+# LOGIN / LOGOUT
+# ========================
+
 LOGIN_URL = '/login/'
 LOGIN_REDIRECT_URL = '/dashboard/'
 LOGOUT_REDIRECT_URL = '/login/'
+
+
+# ========================
+# SECURITY (PRODUCTION)
+# ========================
+
+if not DEBUG:
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_BROWSER_XSS_FILTER = True
+    SECURE_CONTENT_TYPE_NOSNIFF = True

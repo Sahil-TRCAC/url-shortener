@@ -1,30 +1,28 @@
 ﻿from django.contrib import admin
 from django.urls import path, include
-from django.contrib.auth.views import LogoutView, LoginView
-from core.views import redirect_to_original, dashboard_page
+from core.views import redirect_to_original, dashboard_page, login_view, register_view, logout_view
 
 urlpatterns = [
-    # Login page
-    path('login/', LoginView.as_view(template_name='login.html'), name='login'),
-    
-    # Admin panel
+    # Admin
     path('admin/', admin.site.urls),
-    
+
+    # Auth (CUSTOM — not Django default)
+    path('login/', login_view, name='login'),
+    path('register/', register_view, name='register'),
+    path('logout/', logout_view, name='logout'),
+
     # Google OAuth
     path('auth/', include('social_django.urls', namespace='social')),
-    
-    # API endpoints
-    path('api/', include('core.urls')),
-    
+
     # Dashboard
     path('dashboard/', dashboard_page, name='dashboard'),
-    
-    # Logout
-    path('logout/', LogoutView.as_view(next_page='/login/'), name='logout'),
-    
-    # Root redirect to login
-    path('', LoginView.as_view(template_name='login.html'), name='home'),
-    
-    # Redirect short URL (MUST BE LAST)
+
+    # API (clean separation)
+    path('api/', include('core.urls')),
+
+    # Home → login
+    path('', login_view, name='home'),
+
+    # Short URL redirect (ALWAYS LAST)
     path('<str:short_code>/', redirect_to_original, name='redirect'),
 ]
