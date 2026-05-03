@@ -202,15 +202,23 @@ LOGOUT_REDIRECT_URL = '/login/'
 # ========================
 # SECURITY (PRODUCTION)
 # ========================
-
-if not DEBUG:
-    SESSION_COOKIE_SECURE = False
-    CSRF_COOKIE_SECURE = False
-    SECURE_BROWSER_XSS_FILTER = True
-    SECURE_CONTENT_TYPE_NOSNIFF = True
+# ========================
+# SECURITY (PRODUCTION)
+# ========================
 
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 CSRF_TRUSTED_ORIGINS = [
     "https://url-shortener-django-stad.onrender.com"
 ]
+
+if not DEBUG:
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+
+    # 🔥 CRITICAL FOR GOOGLE OAUTH
+    SESSION_COOKIE_SAMESITE = "None"
+    CSRF_COOKIE_SAMESITE = "None"
+
+    SECURE_BROWSER_XSS_FILTER = True
+    SECURE_CONTENT_TYPE_NOSNIFF = True
