@@ -1,8 +1,8 @@
 ﻿import os
 from pathlib import Path
 from dotenv import load_dotenv
+import dj_database_url
 
-# Load env variables
 load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -19,7 +19,7 @@ DEBUG = os.getenv("DEBUG", "False") == "True"
 ALLOWED_HOSTS = [
     "localhost",
     "127.0.0.1",
-    os.getenv("RENDER_EXTERNAL_HOSTNAME", ""),  # for Render
+    os.getenv("RENDER_EXTERNAL_HOSTNAME", "")
 ]
 
 
@@ -48,6 +48,10 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+
+    # 🔥 REQUIRED for Render static files
+    'whitenoise.middleware.WhiteNoiseMiddleware',
+
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -89,27 +93,15 @@ WSGI_APPLICATION = 'shortener.wsgi.application'
 
 
 # ========================
-# DATABASE
+# DATABASE (Render PostgreSQL)
 # ========================
 
-# Local (SQLite)
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
-    }
+    'default': dj_database_url.config(
+        default=os.getenv("DATABASE_URL"),
+        conn_max_age=600
+    )
 }
-
-# 👉 For production later (PostgreSQL)
-# Uncomment when deploying
-"""
-import dj_database_url
-
-DATABASES['default'] = dj_database_url.config(
-    default=os.getenv("DATABASE_URL"),
-    conn_max_age=600
-)
-"""
 
 
 # ========================
@@ -135,12 +127,13 @@ USE_TZ = True
 
 
 # ========================
-# STATIC FILES
+# STATIC FILES (CRITICAL FOR RENDER)
 # ========================
 
 STATIC_URL = '/static/'
-STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')]
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 
 # ========================
@@ -174,7 +167,6 @@ SOCIAL_AUTH_GOOGLE_OAUTH2_SCOPE = [
 
 SOCIAL_AUTH_GOOGLE_OAUTH2_EXTRA_DATA = ['id', 'name', 'email', 'picture']
 
-# 🔥 IMPORTANT FIX (account switching)
 SOCIAL_AUTH_GOOGLE_OAUTH2_AUTH_EXTRA_ARGUMENTS = {
     "prompt": "select_account"
 }
@@ -190,10 +182,7 @@ SOCIAL_AUTH_PIPELINE = (
     'social_core.pipeline.social_auth.auth_allowed',
     'social_core.pipeline.social_auth.social_user',
     'social_core.pipeline.user.get_username',
-
-    # 🔥 prevents duplicate accounts
     'social_core.pipeline.social_auth.associate_by_email',
-
     'social_core.pipeline.user.create_user',
     'social_core.pipeline.social_auth.associate_user',
     'social_core.pipeline.social_auth.load_extra_data',
